@@ -3,106 +3,164 @@ import {
   View,
   Text,
   TextInput,
- TouchableOpacity,
+  TouchableOpacity,
+  Alert,
   StyleSheet,
 } from "react-native";
+import {
+  useNavigation,
+  useRoute,
+  RouteProp,
+  NavigationProp,
+} from "@react-navigation/native";
 
-export default function OTPScreen({ navigation }) {
-  const [phone, setPhone] = useState("");
+type RootStackParamList = {
+  Otp: { phone: string };
+  CustomerHome: { token: string };
+  Customer: {
+    screen: string;
+    params: { token: string };
+  };
+};
+
+const OtpScreen = () => {
   const [otp, setOtp] = useState("");
-  const [generatedOtp, setGeneratedOtp] = useState("");
 
-  // Generate random 4-digit OTP
-  const sendOtp = () => {
-    if (phone.length < 10) {
-      alert("Enter valid phone number");
+  const route = useRoute<RouteProp<RootStackParamList, "Otp">>();
+  const { phone } = route.params;
+
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const verifyOtp = async () => {
+    if (otp.length !== 4) {
+      Alert.alert("Error", "Enter 4-digit OTP");
       return;
     }
 
-    const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(randomOtp);
+    try {
+      const res = await fetch(
+        "http://192.168.29.97:5000/api/customer/auth/verify-otp",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, otp }),
+        }
+      );
 
-    console.log("Generated OTP:", randomOtp); // ← shows in VS Code terminal
-    alert("OTP sent! Check console.");
-  };
+      const data = await res.json();
 
-  const verifyOtp = () => {
-    if (otp === generatedOtp) {
-      navigation.replace("CustomerHome");
-    } else {
-      alert("Invalid OTP");
+      if (data.success) {
+        navigation.reset({
+  index: 0,
+  routes: [
+    {
+      name: "CustomerHome",
+      
+        params: { token: data.token },
+      
+    },
+  ],
+});
+
+      } else {
+        Alert.alert("Error", data.message || "Verification failed");
+      }
+    } catch {
+      Alert.alert("Error", "Server not reachable");
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Customer Login</Text>
+      <View style={styles.card}>
+        <Text style={styles.title}>OTP Verification</Text>
 
-      {/* Phone input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Enter phone number"
-        keyboardType="number-pad"
-        maxLength={10}
-        value={phone}
-        onChangeText={setPhone}
-      />
+        <Text style={styles.subtitle}>
+          Enter the verification code sent to{"\n"}{phone}
+        </Text>
 
-      {/* Send OTP button */}
-      <TouchableOpacity style={styles.button} onPress={sendOtp}>
-        <Text style={styles.buttonText}>Send OTP</Text>
-      </TouchableOpacity>
+        {/* Single OTP Input */}
+        <TextInput
+          style={styles.otpInput}
+          keyboardType="number-pad"
+          maxLength={4}
+          value={otp}
+          onChangeText={(text) =>
+            setOtp(text.replace(/[^0-9]/g, ""))
+          }
+          placeholder="____"
+          placeholderTextColor="#aaa"
+        />
 
-      {/* OTP input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Enter OTP"
-        keyboardType="number-pad"
-        maxLength={4}
-        value={otp}
-        onChangeText={setOtp}
-      />
-
-      {/* Verify button */}
-      <TouchableOpacity style={styles.button} onPress={verifyOtp}>
-        <Text style={styles.buttonText}>Verify OTP</Text>
-      </TouchableOpacity>
+        {/* Verify Button */}
+        <TouchableOpacity
+          onPress={verifyOtp}
+          disabled={otp.length !== 4}
+          style={[
+            styles.button,
+            otp.length === 4 ? styles.active : styles.disabled,
+          ]}
+        >
+          <Text style={styles.buttonText}>Verify</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
-}
-
+};
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFC107",
+    backgroundColor: "#F2F3F7",
     justifyContent: "center",
     padding: 20,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 30,
-  },
-  input: {
+  card: {
     backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
+    borderRadius: 16,
+    padding: 24,
+    elevation: 4,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  otpInput: {
+    borderWidth: 1.5,
+    borderColor: "#E4572E",
+    borderRadius: 10,
+    height: 55,
+    fontSize: 22,
+    fontWeight: "700",
+    letterSpacing: 12,
+    textAlign: "center",
+    marginBottom: 24,
   },
   button: {
-    backgroundColor: "#000",
-    padding: 15,
-    borderRadius: 8,
+    height: 52,
+    borderRadius: 10,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 15,
+  },
+  active: {
+    backgroundColor: "#E4572E",
+  },
+  disabled: {
+    backgroundColor: "#ccc",
   },
   buttonText: {
     color: "#fff",
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
-function alert(arg0: string) {
-    throw new Error("Function not implemented.");
-}
 
+export default OtpScreen;

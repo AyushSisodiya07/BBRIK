@@ -8,20 +8,17 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-/* ✅ Test Admin Credentials */
-const TEST_ADMIN = {
-  id: "admin123",
-  password: "Admin@123",
-};
-
-export default function LoginScreen({ navigation }) {
-  const [role, setRole] = useState("Customer");
+export default function LoginScreen({ navigation }: { navigation: any }) {
+  const [role, setRole] = useState("Admin");
   const [menuVisible, setMenuVisible] = useState(false);
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
 
-  const selectRole = (selectedRole) => {
+  const roles = ["Admin", "Seller", "Truck", "Builder"];
+
+  const selectRole = (selectedRole: string) => {
     setRole(selectedRole);
     setMenuVisible(false);
     setUserId("");
@@ -29,35 +26,63 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleLogin = async () => {
-    if (role === "Customer") {
-      navigation.navigate("OTP");
+    if (!userId || !password) {
+      Alert.alert("Error", "Please enter ID and Password");
       return;
     }
 
     try {
-      if (role === "Admin") {
-        // 🔐 Local admin login (no backend)
-        if (userId === TEST_ADMIN.id && password === TEST_ADMIN.password) {
-          navigation.replace("AdminHome");
-        } else {
-          Alert.alert("Login Failed", "Invalid Admin ID or Password");
+      const response = await fetch(
+        "http://192.168.29.97:5000/api/auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role,
+            loginId: userId,
+            password,
+          }),
         }
-      } else if (role === "Seller") {
-        navigation.replace("SellerHome");
-      } else if (role === "Truck") {
-        navigation.replace("TruckHome");
-      } else if (role === "Builder") {
-        navigation.replace("BuilderHome");
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        Alert.alert("Login Failed", data.message || "Invalid credentials");
+        return;
       }
+
+      // Save token & role
+      await AsyncStorage.setItem("token", data.token);
+      await AsyncStorage.setItem("role", data.role);
+
+      // Navigate based on returned role
+      switch (data.role) {
+        case "Admin":
+          navigation.replace("AdminHome");
+          break;
+        case "Seller":
+          navigation.replace("SellerHome");
+          break;
+        case "Truck":
+          navigation.replace("TruckHome");
+          break;
+        case "Builder":
+          navigation.replace("BuilderHome");
+          break;
+        default:
+          Alert.alert("Error", "Unknown role received");
+      }
+
     } catch (error) {
-      Alert.alert("Error", "Something went wrong");
       console.error(error);
+      Alert.alert("Error", "Something went wrong");
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Three-dot menu */}
+      {/* Role Menu Button */}
       <TouchableOpacity
         style={styles.menuButton}
         onPress={() => setMenuVisible(!menuVisible)}
@@ -65,10 +90,10 @@ export default function LoginScreen({ navigation }) {
         <Text style={styles.menuIcon}>⋮</Text>
       </TouchableOpacity>
 
-      {/* Dropdown menu */}
+      {/* Dropdown */}
       {menuVisible && (
         <View style={styles.dropdown}>
-          {["Customer", "Seller", "Admin", "Truck", "Builder"].map((item) => (
+          {roles.map((item) => (
             <TouchableOpacity key={item} onPress={() => selectRole(item)}>
               <Text style={styles.dropdownItem}>{item}</Text>
             </TouchableOpacity>
@@ -76,50 +101,50 @@ export default function LoginScreen({ navigation }) {
         </View>
       )}
 
-      {/* Main content */}
       <View style={styles.content}>
         <Text style={styles.title}>BRIK</Text>
         <Text style={styles.subtitle}>Login as {role}</Text>
 
-        {/* Login inputs */}
-        {role !== "Customer" && (
-          <>
-            <TextInput
-              placeholder={`${role} ID`}
-              style={styles.input}
-              placeholderTextColor="#666"
-              value={userId}
-              onChangeText={setUserId}
-            />
-            <TextInput
-              placeholder="Password"
-              secureTextEntry
-              style={styles.input}
-              placeholderTextColor="#666"
-              value={password}
-              onChangeText={setPassword}
-            />
-          </>
-        )}
+        <TextInput
+          placeholder={`${role} ID`}
+          style={styles.input}
+          placeholderTextColor="#666"
+          value={userId}
+          onChangeText={setUserId}
+        />
 
-        {/* Login button */}
+        <TextInput
+          placeholder="Password"
+          secureTextEntry
+          style={styles.input}
+          placeholderTextColor="#666"
+          value={password}
+          onChangeText={setPassword}
+        />
+
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
 
-        {/* 🔐 Helper text for testing */}
-        {role === "Admin" && (
-          <Text style={styles.helper}>
-            Test Admin → ID: admin123 | Pass: Admin@123
+        {/* Back to customer */}
+        <TouchableOpacity
+          onPress={() => navigation.replace("PhoneEntry")}
+          style={{ marginTop: 20 }}
+        >
+          <Text style={{ textAlign: "center", color: "#000" }}>
+            ← Back to Customer
           </Text>
-        )}
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFC107" },
+  container: {
+    flex: 1,
+    backgroundColor: "#FFC107",
+  },
 
   menuButton: {
     position: "absolute",
@@ -128,7 +153,10 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
 
-  menuIcon: { fontSize: 28, fontWeight: "bold" },
+  menuIcon: {
+    fontSize: 28,
+    fontWeight: "bold",
+  },
 
   dropdown: {
     position: "absolute",
@@ -184,12 +212,5 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
-  },
-
-  helper: {
-    marginTop: 15,
-    textAlign: "center",
-    fontSize: 12,
-    color: "#333",
   },
 });
