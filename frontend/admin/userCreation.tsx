@@ -95,7 +95,7 @@ export default function AdminHomeScreen() {
       Alert.alert("Error", "Fill all fields");
       return;
     }
-    if (phone.length < 10) {
+    if (phone.length !== 10) {
       Alert.alert("Error", "Enter valid phone number");
       return;
     }
@@ -125,29 +125,50 @@ export default function AdminHomeScreen() {
     }
   };
 
-  const deleteUser = async (id: string) => {
-    Alert.alert("Delete User", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const res = await fetch(`http://192.168.29.97:5000/api/admin/users/${id}`, { method: "DELETE" });
-            if (res.ok) setUsers((prev) => prev.filter((u) => u._id !== id));
-          } catch (err) { console.log(err); }
-        },
-      },
-    ]);
-  };
+  const deleteUser = async (id: string, role: string) => {
+  Alert.alert("Delete User", "Are you sure?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Delete",
+      style: "destructive",
+      onPress: async () => {
+        try {
+          const res = await fetch(
+            `http://192.168.29.97:5000/api/admin/users/delete/${role}/${id}`,
+            { method: "DELETE" }
+          );
 
-  const toggleBlock = async (id: string) => {
-    try {
-      const res = await fetch(`http://192.168.29.97:5000/api/admin/users/block/${id}`, { method: "PATCH" });
-      const data = await res.json();
-      if (res.ok) setUsers((prev) => prev.map((u) => u._id === id ? { ...u, blocked: data.blocked } : u));
-    } catch (err) { console.log(err); }
-  };
+          if (res.ok) {
+            setUsers((prev) => prev.filter((u) => u._id !== id));
+          }
+        } catch (err) {
+          console.log(err);
+        }
+      },
+    },
+  ]);
+};
+
+ const toggleBlock = async (id: string, role: string) => {
+  try {
+    const res = await fetch(
+      `http://192.168.29.97:5000/api/admin/users/block/${role}/${id}`,
+      { method: "PATCH" }
+    );
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === id ? { ...u, blocked: data.blocked } : u
+        )
+      );
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -183,10 +204,10 @@ export default function AdminHomeScreen() {
         <View style={[styles.statusBadge, item.blocked ? styles.blocked : styles.active]}>
           <Text style={styles.statusText}>{item.blocked ? "Blocked" : "Active"}</Text>
         </View>
-        <TouchableOpacity style={styles.blockBtn} onPress={() => toggleBlock(item._id)}>
+        <TouchableOpacity style={styles.blockBtn} onPress={() => toggleBlock(item._id, item.role)}>
           <Text style={styles.btnText}>{item.blocked ? "Unblock" : "Block"}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteUser(item._id)}>
+        <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteUser(item._id, item.role)}>
           <Text style={styles.btnText}>Delete</Text>
         </TouchableOpacity>
       </View>

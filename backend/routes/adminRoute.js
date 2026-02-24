@@ -1,7 +1,14 @@
 import express from "express";
 const router = express.Router();
-import { loginAdmin } from "../controllers/adminController.js";
+import { getAllUsers ,addUser,deleteUser,toggleBlockUser} from "../controllers/adminUserController.js";
 
-router.post("/login", loginAdmin);
+
+router.get("/users", getAllUsers);
+router.post("/users/add", addUser);
+router.delete("/users/delete/:role/:id", deleteUser);
+router.patch("/users/block/:role/:id", toggleBlockUser);
+
+
+
 
 export default router;

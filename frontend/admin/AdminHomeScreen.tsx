@@ -50,15 +50,9 @@ export default function AdminDashboardScreen({ navigation }: any) {
         <Text style={styles.section}>User Management</Text>
 
         <Card
-          title="Create New User"
-          subtitle="Add Seller, Builder, Architect, Truck"
+          title="Manage User"
+          subtitle="Add ,Delete or Block users"
           onPress={() => navigation.navigate("CreateUser")}
-        />
-
-        <Card
-          title="Manage Users"
-          subtitle="View, block or delete users"
-          onPress={() => navigation.navigate("ManageUsers")}
         />
 
         {/* PRODUCT */}
@@ -154,3 +148,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+
+
+
+
