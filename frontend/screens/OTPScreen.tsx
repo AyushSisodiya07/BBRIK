@@ -39,7 +39,7 @@ const OtpScreen = () => {
 
     try {
       const res = await fetch(
-        "http://192.168.29.97:5000/api/customer/auth/verify-otp",
+        "http://192.168.25.77:5000/api/customer/auth/verify-otp",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

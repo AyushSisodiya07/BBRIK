@@ -9,6 +9,14 @@ import AdminHomeScreen from "./admin/AdminHomeScreen";
 import CreateUserScreen from "./admin/userCreation";
 import PhoneEntryScreen from "./screens/phoneEntryScreen";
 import CustomerHome from "./customer/customerHomeScreen";
+import SellerHome from "./seller/SellerHomeScreen";
+import SellerProfile from "./seller/SellerProfileScreen";
+import AddProduct from "./seller/AddProductScreen";
+import sellerProduct from "./seller/SellerProductsScreen";
+import HelpSupport from "./seller/HelpSupportScreen";
+
+
+
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +34,11 @@ export default function App() {
         <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
         <Stack.Screen name="CreateUser" component={CreateUserScreen} />
         <Stack.Screen name="CustomerHome" component={CustomerHome} />
+        <Stack.Screen name="SellerHome" component={SellerHome} />
+        <Stack.Screen name="SellerProfile" component={SellerProfile} />
+        <Stack.Screen name="AddProduct" component={AddProduct} /> 
+        <Stack.Screen name="SellerProducts" component={sellerProduct} />
+        <Stack.Screen name="HelpSupport" component={HelpSupport} />
       </Stack.Navigator>
     </NavigationContainer>
   );

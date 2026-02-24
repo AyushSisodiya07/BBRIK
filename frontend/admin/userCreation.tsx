@@ -77,7 +77,7 @@ export default function AdminHomeScreen() {
   /* ---------- Fetch Users ---------- */
   const fetchUsers = async () => {
     try {
-      const res = await fetch("http://192.168.29.97:5000/api/admin/users");
+      const res = await fetch("http://192.168.25.77:5000/api/admin/users");
       const data = await res.json();
       if (res.ok) setUsers(data.users);
     } catch (err) {
@@ -106,7 +106,7 @@ export default function AdminHomeScreen() {
     const newUser = { name, phone, organization, address, role: activeTab, loginId, password };
 
     try {
-      const res = await fetch("http://192.168.29.97:5000/api/admin/users/add", {
+      const res = await fetch("http://192.168.25.77:5000/api/admin/users/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newUser),
@@ -134,7 +134,7 @@ export default function AdminHomeScreen() {
       onPress: async () => {
         try {
           const res = await fetch(
-            `http://192.168.29.97:5000/api/admin/users/delete/${role}/${id}`,
+            `http://192.168.25.77:5000/api/admin/users/delete/${role}/${id}`,
             { method: "DELETE" }
           );
 
@@ -152,7 +152,7 @@ export default function AdminHomeScreen() {
  const toggleBlock = async (id: string, role: string) => {
   try {
     const res = await fetch(
-      `http://192.168.29.97:5000/api/admin/users/block/${role}/${id}`,
+      `http://192.168.25.77:5000/api/admin/users/block/${role}/${id}`,
       { method: "PATCH" }
     );
 
