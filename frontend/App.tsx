@@ -5,15 +5,15 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SplashScreen from "./screens/SplashScreen";
 import LoginScreen from "./screens/LoginScreen";
 import OTPScreen from "./screens/OTPScreen";
-import AdminHomeScreen from "./admin/AdminHomeScreen";
-import CreateUserScreen from "./admin/userCreation";
+import AdminHomeScreen from "./screens/admin/AdminHomeScreen";
+import CreateUserScreen from "./screens/admin/userCreation";
 import PhoneEntryScreen from "./screens/phoneEntryScreen";
-import CustomerHome from "./customer/customerHomeScreen";
-import SellerHome from "./seller/SellerHomeScreen";
-import SellerProfile from "./seller/SellerProfileScreen";
-import AddProduct from "./seller/AddProductScreen";
-import sellerProduct from "./seller/SellerProductsScreen";
-import HelpSupport from "./seller/HelpSupportScreen";
+import CustomerHome from "./screens/customer/customerHomeScreen";
+import SellerHome from "./screens/seller/SellerHomeScreen";
+import SellerProfile from "./screens/seller/SellerProfileScreen";
+import AddProduct from "./screens/seller/AddProductScreen";
+import sellerProduct from "./screens/seller/SellerProductsScreen";
+import HelpSupport from "./screens/seller/HelpSupportScreen";
 
 
 
