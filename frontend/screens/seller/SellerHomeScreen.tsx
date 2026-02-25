@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F6F7FB" },
 
   hero: {
-    backgroundColor: "#071A2F",
+    backgroundColor: "#eaa52f",
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 36,
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   heroSub: { marginTop: 4, color: "#CBD5E1", fontSize: 13 },
 
   profileBtn: {
-    backgroundColor: "#F59E0B",
+    backgroundColor: "#ffffff",
     height: 42,
     width: 42,
     borderRadius: 21,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   summaryLabel: { color: "#9CA3AF", fontSize: 12 },
 
   summaryValue: {
-    color: "#F59E0B",
+    color: "#00fe6a",
     fontSize: 28,
     fontWeight: "900",
     marginTop: 4,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
 
   statCard: {
     width: "31%",
-    backgroundColor: "#fff",
+    backgroundColor: "#ecab3b",
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: "center",
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#111827",
+    color: "#1c2711",
   },
 
   statTitle: {
