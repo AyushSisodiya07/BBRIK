@@ -10,6 +10,7 @@ import {
   Image,
   ScrollView,
   FlatList,
+  Switch,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -23,59 +24,73 @@ type Props = {
 };
 
 export default function AddProductScreen({ navigation, route }: Props) {
-  const editProduct = route.params?.editProduct;
+  // ✅ ALWAYS FIRST — safe optional access
+  const editProduct = route?.params?.editProduct;
 
-  const [productName, setProductName] = useState("");
-  const [price, setPrice] = useState("");
-  const [quantity, setQuantity] = useState("");
+  // ✅ ALL HOOKS AT TOP (DO NOT MOVE)
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [price, setPrice] = useState("");
+  const [stock, setStock] = useState("");
+  const [unit, setUnit] = useState("");
+  const [isAvailable, setIsAvailable] = useState(true);
   const [images, setImages] = useState<string[]>([]);
 
-  // ================= PREFILL =================
+  // ================= PREFILL (SAFE) =================
   useEffect(() => {
-    if (editProduct) {
-      setProductName(editProduct.name || "");
-      setPrice(String(editProduct.price || ""));
-      setQuantity(String(editProduct.quantity || ""));
-      setDescription(editProduct.description || "");
+    if (!editProduct) return;
 
-      // backward compatibility
-      if (editProduct.images) setImages(editProduct.images);
-      else if (editProduct.image) setImages([editProduct.image]);
-    }
+    setName(editProduct.name || "");
+    setDescription(editProduct.description || "");
+    setCategory(editProduct.category || "");
+    setPrice(String(editProduct.price ?? ""));
+    setStock(
+      String(editProduct.stock ?? editProduct.quantity ?? "")
+    );
+    setUnit(editProduct.unit || "");
+    setIsAvailable(
+      editProduct.isAvailable !== undefined
+        ? editProduct.isAvailable
+        : true
+    );
+
+    if (editProduct.images) setImages(editProduct.images);
+    else if (editProduct.image) setImages([editProduct.image]);
   }, [editProduct]);
 
-  // ================= PICK MULTIPLE =================
+  // ================= IMAGE PICK =================
   const pickImages = () => {
     launchImageLibrary(
       { mediaType: "photo", selectionLimit: 5 },
       (res) => {
         if (res.assets?.length) {
-          const uris = res.assets.map((a) => a.uri!).filter(Boolean);
+          const uris = res.assets
+            .map((a) => a.uri)
+            .filter(Boolean) as string[];
           setImages((prev) => [...prev, ...uris]);
         }
       }
     );
   };
 
-  // ================= CAMERA =================
   const openCamera = () => {
     launchCamera({ mediaType: "photo" }, (res) => {
       if (res.assets?.length) {
-        setImages((prev) => [...prev, res.assets![0].uri!]);
+        const uri = res.assets[0].uri;
+        if (uri) setImages((prev) => [...prev, uri]);
       }
     });
   };
 
-  // ================= REMOVE IMAGE =================
   const removeImage = (uri: string) => {
     setImages((prev) => prev.filter((i) => i !== uri));
   };
 
   // ================= SAVE =================
   const saveProduct = async () => {
-    if (!productName || !price || !quantity) {
-      Alert.alert("Please fill all required fields");
+    if (!name || !price || !stock) {
+      Alert.alert("Please fill required fields");
       return;
     }
 
@@ -83,32 +98,27 @@ export default function AddProductScreen({ navigation, route }: Props) {
       const data = await AsyncStorage.getItem("SELLER_PRODUCTS");
       const products = data ? JSON.parse(data) : [];
 
+      const payload = {
+        id: editProduct?.id || Date.now().toString(),
+        name,
+        description,
+        category,
+        price: Number(price),
+        stock: Number(stock),
+        quantity: Number(stock), // backward compatibility
+        unit,
+        isAvailable,
+        images,
+      };
+
       let updatedProducts = [];
 
       if (editProduct) {
         updatedProducts = products.map((p: any) =>
-          p.id === editProduct.id
-            ? {
-                ...p,
-                name: productName,
-                price,
-                quantity,
-                description,
-                images,
-              }
-            : p
+          p.id === editProduct.id ? payload : p
         );
       } else {
-        const newProduct = {
-          id: Date.now().toString(),
-          name: productName,
-          price,
-          quantity,
-          description,
-          images,
-        };
-
-        updatedProducts = [newProduct, ...products];
+        updatedProducts = [payload, ...products];
       }
 
       await AsyncStorage.setItem(
@@ -124,6 +134,7 @@ export default function AddProductScreen({ navigation, route }: Props) {
       navigation.goBack();
     } catch (e) {
       console.log("Save error", e);
+      Alert.alert("Error", "Failed to save product");
     }
   };
 
@@ -148,8 +159,8 @@ export default function AddProductScreen({ navigation, route }: Props) {
         <FlatList
           horizontal
           data={images}
-          keyExtractor={(item) => item}
-          style={{ marginBottom: 12 }}
+          keyExtractor={(item, index) => item + index}
+          style={{ marginBottom: 16 }}
           renderItem={({ item }) => (
             <View style={styles.previewWrap}>
               <Image source={{ uri: item }} style={styles.previewImage} />
@@ -163,33 +174,44 @@ export default function AddProductScreen({ navigation, route }: Props) {
           )}
         />
 
-        {/* NAME */}
+        {/* FORM */}
         <TextInput
-          placeholder="Product name"
+          placeholder="Product name *"
           style={styles.input}
-          value={productName}
-          onChangeText={setProductName}
+          value={name}
+          onChangeText={setName}
         />
 
-        {/* PRICE */}
         <TextInput
-          placeholder="Price"
+          placeholder="Category"
+          style={styles.input}
+          value={category}
+          onChangeText={setCategory}
+        />
+
+        <TextInput
+          placeholder="Price *"
           keyboardType="number-pad"
           style={styles.input}
           value={price}
           onChangeText={setPrice}
         />
 
-        {/* QUANTITY */}
         <TextInput
-          placeholder="Quantity"
+          placeholder="Stock Quantity *"
           keyboardType="number-pad"
           style={styles.input}
-          value={quantity}
-          onChangeText={setQuantity}
+          value={stock}
+          onChangeText={setStock}
         />
 
-        {/* DESCRIPTION */}
+        <TextInput
+          placeholder="Unit (kg, pcs, litre)"
+          style={styles.input}
+          value={unit}
+          onChangeText={setUnit}
+        />
+
         <TextInput
           placeholder="Product description"
           style={[styles.input, styles.textArea]}
@@ -198,53 +220,66 @@ export default function AddProductScreen({ navigation, route }: Props) {
           multiline
         />
 
+        {/* SWITCH */}
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>Available for sale</Text>
+          <Switch value={isAvailable} onValueChange={setIsAvailable} />
+        </View>
+
         {/* SAVE */}
         <TouchableOpacity style={styles.submitBtn} onPress={saveProduct}>
           <Text style={styles.submitText}>
             {editProduct ? "Update Product" : "Add Product"}
           </Text>
         </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/* ================= STYLES ================= */
+// ================= STYLES =================
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F7FB", padding: 20 },
+  container: { flex: 1, backgroundColor: "#F6F7FB", padding: 20 },
 
-  title: { fontSize: 24, fontWeight: "900", marginBottom: 20 },
+  title: {
+    fontSize: 26,
+    fontWeight: "900",
+    marginBottom: 20,
+    color: "#111827",
+  },
 
   imageBox: {
-    height: 120,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 16,
+    height: 130,
+    backgroundColor: "#EEF2F7",
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
 
   imageText: { fontWeight: "700", color: "#6B7280" },
 
   cameraBtn: {
     backgroundColor: "#111827",
-    padding: 12,
-    borderRadius: 12,
+    padding: 13,
+    borderRadius: 14,
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   cameraText: { color: "#fff", fontWeight: "700" },
 
-  previewWrap: {
-    marginRight: 10,
-  },
+  previewWrap: { marginRight: 10 },
 
   previewImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
+    width: 72,
+    height: 72,
+    borderRadius: 12,
   },
 
   removeBtn: {
@@ -252,9 +287,9 @@ const styles = StyleSheet.create({
     right: -6,
     top: -6,
     backgroundColor: "#EF4444",
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -262,23 +297,42 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: "#fff",
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
+    fontWeight: "600",
   },
 
   textArea: {
-    height: 100,
+    height: 110,
     textAlignVertical: "top",
+  },
+
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 16,
+  },
+
+  switchLabel: {
+    fontWeight: "700",
+    color: "#111827",
   },
 
   submitBtn: {
     backgroundColor: "#10B981",
-    padding: 16,
-    borderRadius: 16,
+    padding: 18,
+    borderRadius: 18,
     alignItems: "center",
+    elevation: 2,
   },
 
   submitText: {
