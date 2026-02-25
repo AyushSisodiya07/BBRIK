@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   FlatList,
   StatusBar,
-  LogBox,
   Image,
   Alert,
 } from "react-native";
@@ -19,8 +18,6 @@ import {
   User,
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-LogBox.ignoreAllLogs(true);
 
 type Props = {
   navigation: any;
@@ -35,7 +32,6 @@ export default function SellerHomeScreen({ navigation }: Props) {
   // ================= LOAD DASHBOARD =================
   const loadDashboardData = async () => {
     try {
-      // PRODUCTS
       const productData = await AsyncStorage.getItem("SELLER_PRODUCTS");
       const parsedProducts = productData ? JSON.parse(productData) : [];
       const validProducts = Array.isArray(parsedProducts)
@@ -45,14 +41,12 @@ export default function SellerHomeScreen({ navigation }: Props) {
       setProductCount(validProducts.length);
       setProducts(validProducts);
 
-      // ORDERS
       const orderData = await AsyncStorage.getItem("SELLER_ORDERS");
       const parsedOrders = orderData ? JSON.parse(orderData) : [];
       const validOrders = Array.isArray(parsedOrders) ? parsedOrders : [];
 
       setOrderCount(validOrders.length);
 
-      // REVENUE ONLY FROM ORDERS
       const revenue = validOrders.reduce((sum: number, o: any) => {
         const price = Number(o.price || 0);
         const qty = Number(o.quantity || 0);
@@ -65,7 +59,28 @@ export default function SellerHomeScreen({ navigation }: Props) {
     }
   };
 
-  // ================= DELETE PRODUCT =================
+  // ================= TOGGLE AVAILABILITY =================
+  const toggleAvailability = async (id: string) => {
+    try {
+      const data = await AsyncStorage.getItem("SELLER_PRODUCTS");
+      const productsData = data ? JSON.parse(data) : [];
+
+      const updated = productsData.map((p: any) =>
+        p.id === id ? { ...p, isAvailable: !p.isAvailable } : p
+      );
+
+      await AsyncStorage.setItem(
+        "SELLER_PRODUCTS",
+        JSON.stringify(updated)
+      );
+
+      loadDashboardData();
+    } catch (e) {
+      console.log("Toggle availability error", e);
+    }
+  };
+
+  // ================= DELETE =================
   const deleteProduct = async (id: string) => {
     Alert.alert("Delete Product", "Are you sure?", [
       { text: "Cancel", style: "cancel" },
@@ -73,35 +88,25 @@ export default function SellerHomeScreen({ navigation }: Props) {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          try {
-            const data = await AsyncStorage.getItem("SELLER_PRODUCTS");
-            const productsData = data ? JSON.parse(data) : [];
-            const validProducts = Array.isArray(productsData)
-              ? productsData
-              : [];
+          const data = await AsyncStorage.getItem("SELLER_PRODUCTS");
+          const productsData = data ? JSON.parse(data) : [];
+          const updated = productsData.filter((p: any) => p.id !== id);
 
-            const updated = validProducts.filter((p: any) => p.id !== id);
+          await AsyncStorage.setItem(
+            "SELLER_PRODUCTS",
+            JSON.stringify(updated)
+          );
 
-            await AsyncStorage.setItem(
-              "SELLER_PRODUCTS",
-              JSON.stringify(updated)
-            );
-
-            loadDashboardData();
-          } catch (e) {
-            console.log("Delete error", e);
-          }
+          loadDashboardData();
         },
       },
     ]);
   };
 
-  // ================= EDIT PRODUCT =================
   const editProduct = (product: any) => {
     navigation.navigate("AddProduct", { editProduct: product });
   };
 
-  // ================= AUTO REFRESH =================
   useEffect(() => {
     loadDashboardData();
     const unsubscribe = navigation.addListener("focus", loadDashboardData);
@@ -122,7 +127,6 @@ export default function SellerHomeScreen({ navigation }: Props) {
 
   const renderStat = ({ item }: any) => {
     const Icon = item.icon;
-
     return (
       <View style={styles.statCard}>
         <View style={styles.statIcon}>
@@ -173,62 +177,92 @@ export default function SellerHomeScreen({ navigation }: Props) {
         />
       </View>
 
-      {/* RECENT PRODUCTS */}
-      {products.length > 0 && (
-        <View style={styles.recentWrapper}>
-          <Text style={styles.recentTitle}>Recent Products</Text>
+      {/* PRODUCTS */}
+      <View style={styles.recentWrapper}>
+        <Text style={styles.recentTitle}>Your Products</Text>
 
-          {products.slice(0, 3).map((p) => (
-            <View key={p.id} style={styles.productCard}>
-              {/* IMAGE */}
-              <View style={styles.productImageWrap}>
-                {p.image ? (
-                  <Image
-                    source={{ uri: p.image }}
-                    style={styles.productImage}
-                  />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Package size={18} color="#9CA3AF" />
-                  </View>
-                )}
-              </View>
+        <FlatList
+          data={products}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 140 }}
+          renderItem={({ item: p }) => {
+            const imageUri = p.images?.[0] || p.image || null;
+            const available = p.isAvailable === true;
 
-              {/* INFO */}
-              <View style={styles.productInfo}>
-                <Text numberOfLines={1} style={styles.productName}>
-                  {p.name}
-                </Text>
+            return (
+              <View style={styles.productCard}>
+                {/* IMAGE */}
+                <View style={styles.productImageWrap}>
+                  {imageUri ? (
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.productImage}
+                    />
+                  ) : (
+                    <View style={styles.imagePlaceholder}>
+                      <Package size={18} color="#9CA3AF" />
+                    </View>
+                  )}
+                </View>
 
-                <Text style={styles.productPrice}>₹ {p.price}</Text>
+                {/* INFO */}
+                <View style={styles.productInfo}>
+                  <Text numberOfLines={1} style={styles.productName}>
+                    {p.name}
+                  </Text>
 
-                <View style={styles.qtyBadge}>
-                  <Text style={styles.qtyText}>Qty: {p.quantity}</Text>
+                  <Text style={styles.productPrice}>₹ {p.price}</Text>
+
+                  <Text style={styles.metaText}>
+                    {p.category || "General"} • {p.unit || "pcs"}
+                  </Text>
+
+                  {/* ✅ CLICKABLE AVAILABILITY */}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => toggleAvailability(p.id)}
+                    style={[
+                      styles.statusBadge,
+                      available
+                        ? styles.availableBadge
+                        : styles.outBadge,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusText,
+                        available
+                          ? styles.availableText
+                          : styles.outText,
+                      ]}
+                    >
+                      {available ? "Available" : "Out of Stock"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* ACTIONS */}
+                <View style={styles.actionColumn}>
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={() => editProduct(p)}
+                  >
+                    <Text style={styles.editText}>Edit</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => deleteProduct(p.id)}
+                  >
+                    <Text style={styles.deleteText}>Delete</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-
-              {/* ACTIONS */}
-              <View style={styles.actionColumn}>
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => editProduct(p)}
-                >
-                  <Text style={styles.editText}>Edit</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => deleteProduct(p.id)}
-                >
-                  <Text style={styles.deleteText}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <View style={{ height: 110 }} />
+            );
+          }}
+        />
+      </View>
 
       {/* BOTTOM BUTTON */}
       <View style={styles.bottomBar}>
@@ -247,10 +281,10 @@ export default function SellerHomeScreen({ navigation }: Props) {
 /* ================= STYLES ================= */
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F7FB" },
+  container: { flex: 1, backgroundColor: "#F6F7FB" },
 
   hero: {
-    backgroundColor: "#0F172A",
+    backgroundColor: "#071A2F",
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 36,
@@ -265,7 +299,6 @@ const styles = StyleSheet.create({
   },
 
   heroTitle: { fontSize: 26, fontWeight: "900", color: "#fff" },
-
   heroSub: { marginTop: 4, color: "#CBD5E1", fontSize: 13 },
 
   profileBtn: {
@@ -279,7 +312,7 @@ const styles = StyleSheet.create({
 
   summaryCard: {
     marginTop: 20,
-    backgroundColor: "#111827",
+    backgroundColor: "#0F172A",
     borderRadius: 20,
     paddingVertical: 20,
     paddingHorizontal: 18,
@@ -328,6 +361,7 @@ const styles = StyleSheet.create({
   recentWrapper: {
     paddingHorizontal: 18,
     marginTop: 14,
+    flex: 1,
   },
 
   recentTitle: {
@@ -339,26 +373,26 @@ const styles = StyleSheet.create({
 
   productCard: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 12,
-    marginBottom: 10,
+    marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
-    elevation: 3,
+    elevation: 4,
   },
 
   productImageWrap: { marginRight: 12 },
 
   productImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 14,
   },
 
   imagePlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 14,
     backgroundColor: "#F3F4F6",
     alignItems: "center",
     justifyContent: "center",
@@ -369,35 +403,42 @@ const styles = StyleSheet.create({
   productName: {
     fontWeight: "800",
     color: "#111827",
-    fontSize: 14,
+    fontSize: 15,
   },
 
   productPrice: {
     marginTop: 2,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "900",
     color: "#F59E0B",
   },
 
-  qtyBadge: {
-    marginTop: 6,
-    alignSelf: "flex-start",
-    backgroundColor: "#FFF7E6",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+  metaText: {
+    marginTop: 4,
+    fontSize: 11,
+    color: "#6B7280",
+    fontWeight: "600",
   },
 
-  qtyText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#92400E",
+  statusBadge: {
+    marginTop: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
+
+  availableBadge: { backgroundColor: "#DCFCE7" },
+  outBadge: { backgroundColor: "#FEE2E2" },
+
+  statusText: { fontSize: 11, fontWeight: "800" },
+  availableText: { color: "#166534" },
+  outText: { color: "#DC2626" },
 
   actionColumn: {
     marginLeft: 8,
     justifyContent: "space-between",
-    height: 56,
+    height: 60,
   },
 
   editBtn: {
@@ -433,7 +474,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#F5F7FB",
+    backgroundColor: "#F6F7FB",
     paddingHorizontal: 18,
     paddingBottom: 16,
     paddingTop: 8,
