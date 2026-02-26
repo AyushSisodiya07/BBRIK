@@ -33,7 +33,11 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
 
     try {
       const response = await fetch(
+<<<<<<< HEAD
         "http://10.81.229.54:5000/api/auth/login",
+=======
+        "http://192.168.25.67:5000/api/auth/login",
+>>>>>>> 19f2665baf5fab9d8b4e828cfecdbd600e266626
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

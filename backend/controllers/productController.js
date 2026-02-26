@@ -12,17 +12,19 @@ export const addProduct = async (req, res) => {
       price,
       stock,
       unit,
+      isAvailable,
       images,
     } = req.body;
 
     const product = await Product.create({
-      seller: req.seller._id,
+      seller: req.user.id,
       name,
       description,
       category,
       price,
       stock,
       unit,
+      isAvailable,
       images,
     });
 
@@ -47,7 +49,7 @@ export const updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    if (product.seller.toString() !== req.seller._id.toString()) {
+    if (product.seller.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
@@ -97,7 +99,7 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    if (product.seller.toString() !== req.seller._id.toString()) {
+    if (product.seller.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
@@ -159,7 +161,7 @@ export const getSingleProduct = async (req, res) => {
 export const getSellerProducts = async (req, res) => {
   try {
     const products = await Product.find({
-      seller: req.seller._id,
+      seller: req.user.id,
     });
 
     res.json({
