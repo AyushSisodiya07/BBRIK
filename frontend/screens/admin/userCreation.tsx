@@ -77,7 +77,7 @@ export default function AdminHomeScreen() {
   /* ---------- Fetch Users ---------- */
   const fetchUsers = async () => {
     try {
-      const res = await fetch("http://192.168.25.91:5000/api/admin/users");
+      const res = await fetch("http://10.81.229.54:5000/api/admin/users");
       const data = await res.json();
       if (res.ok) setUsers(data.users);
     } catch (err) {
