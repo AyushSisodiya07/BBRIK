@@ -11,6 +11,7 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /* ---------- Theme ---------- */
 const COLORS = {
@@ -77,7 +78,16 @@ export default function AdminHomeScreen() {
   /* ---------- Fetch Users ---------- */
   const fetchUsers = async () => {
     try {
-      const res = await fetch("http://192.168.25.91:5000/api/admin/users");
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        Alert.alert("Error", "No token found");
+        return;
+      }
+      const res = await fetch("http://192.168.25.67:5000/api/admin/users" ,
+        { method: "GET", headers: { "Content-Type": "application/json" ,
+          Authorization: `Bearer ${token}`
+        } });
       const data = await res.json();
       if (res.ok) setUsers(data.users);
     } catch (err) {
@@ -104,11 +114,15 @@ export default function AdminHomeScreen() {
     const password = generatePassword();
 
     const newUser = { name, phone, organization, address, role: activeTab, loginId, password };
-
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Error", "No token found");
+        return;
+      }
     try {
-      const res = await fetch("http://192.168.25.91:5000/api/admin/users/add", {
+      const res = await fetch("http://192.168.25.67:5000/api/admin/users/add", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" , Authorization: `Bearer ${token}`},
         body: JSON.stringify(newUser),
       });
       const data = await res.json();
@@ -133,9 +147,14 @@ export default function AdminHomeScreen() {
       style: "destructive",
       onPress: async () => {
         try {
+          const token = await AsyncStorage.getItem("token");
+          if (!token) {
+            Alert.alert("Error", "No token found");
+            return;
+          }
           const res = await fetch(
-            `http://192.168.25.91:5000/api/admin/users/delete/${role}/${id}`,
-            { method: "DELETE" }
+            `http://192.168.25.67:5000/api/admin/users/delete/${role}/${id}`,
+            { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
           );
 
           if (res.ok) {
@@ -151,9 +170,14 @@ export default function AdminHomeScreen() {
 
  const toggleBlock = async (id: string, role: string) => {
   try {
+    const token = await AsyncStorage.getItem("token");
+    if (!token) {
+      Alert.alert("Error", "No token found");
+      return;
+    }
     const res = await fetch(
-      `http://192.168.25.91:5000/api/admin/users/block/${role}/${id}`,
-      { method: "PATCH" }
+      `http://192.168.25.67:5000/api/admin/users/block/${role}/${id}`,
+      { method: "PATCH", headers: { Authorization: `Bearer ${token}` } }
     );
 
     const data = await res.json();

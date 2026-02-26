@@ -22,16 +22,7 @@ const productSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      enum: [
-        "Cement",
-        "Steel",
-        "Bricks",
-        "Sand",
-        "Electrical",
-        "Plumbing",
-        "Tiles",
-        "Other",
-      ],
+      
     },
 
     price: {
