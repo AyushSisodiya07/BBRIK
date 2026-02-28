@@ -6,7 +6,11 @@ import { mongoDbConnect } from "./connection.js";
 import customerRoute from "./routes/customerRoute.js";
 import authRoutes from "./routes/authRoute.js";
 import sellerRoute from "./routes/sellerRoute.js";
+<<<<<<< HEAD
+import productRoute from "./routes/productRoute.js";
+=======
 
+>>>>>>> 19f2665baf5fab9d8b4e828cfecdbd600e266626
 
 
 
@@ -31,6 +35,17 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
+<<<<<<< HEAD
+app.use("/api/seller", sellerRoute);
+
+
+app.use("/api/product", productRoute);
+
+
+app.listen(PORT, () => {
+  console.log(`Server running on ${PORT}`);
+=======
 app.listen(5000, "0.0.0.0", () => {
   console.log("Server running");
+>>>>>>> 19f2665baf5fab9d8b4e828cfecdbd600e266626
 });
