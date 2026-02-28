@@ -4,6 +4,7 @@ import Product from "../models/productModel.js";
    ➜ Add Product (Seller Only)
 ===================================== */
 export const addProduct = async (req, res) => {
+ 
   try {
     const {
       name,
@@ -13,8 +14,10 @@ export const addProduct = async (req, res) => {
       stock,
       unit,
       isAvailable,
-      images,
     } = req.body;
+
+    // 🔥 Get Cloudinary URLs from uploaded files
+    const imageUrls = req.files ? req.files.map(file => file.path) : [];
 
     const product = await Product.create({
       seller: req.user.id,
@@ -25,7 +28,7 @@ export const addProduct = async (req, res) => {
       stock,
       unit,
       isAvailable,
-      images,
+      images: imageUrls, // ✅ Save Cloudinary URLs
     });
 
     res.status(201).json({
@@ -37,7 +40,6 @@ export const addProduct = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 /* =====================================
    ➜ Update Product
 ===================================== */
@@ -60,9 +62,11 @@ export const updateProduct = async (req, res) => {
       price,
       stock,
       unit,
-      images,
       isAvailable,
     } = req.body;
+
+    // 🔥 New uploaded images (if any)
+    const newImages = req.files ? req.files.map(file => file.path) : null;
 
     product.name = name || product.name;
     product.description = description || product.description;
@@ -70,7 +74,12 @@ export const updateProduct = async (req, res) => {
     product.price = price || product.price;
     product.stock = stock ?? product.stock;
     product.unit = unit || product.unit;
-    product.images = images || product.images;
+
+    // ✅ Only replace images if new uploaded
+    if (newImages && newImages.length > 0) {
+      product.images = newImages;
+    }
+
     product.isAvailable =
       typeof isAvailable === "boolean"
         ? isAvailable
@@ -87,7 +96,6 @@ export const updateProduct = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 /* =====================================
    ➜ Delete Product
 ===================================== */

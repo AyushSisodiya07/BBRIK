@@ -4,6 +4,8 @@ import Seller from "../models/sellerModel.js";
 import Builder from "../models/builderModel.js";
 import Truck from "../models/truckModel.js";
 import Admin from "../models/adminModel.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 export const loginUser = async (req, res) => {
   try {

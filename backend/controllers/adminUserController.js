@@ -47,6 +47,7 @@ export const getAllUsers = async (req, res) => {
       success: true,
       users: allUsers,
     });
+    
   } catch (error) {
     console.error("Get users error:", error);
     res.status(500).json({

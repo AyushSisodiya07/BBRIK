@@ -71,28 +71,39 @@ export default function AddProductScreen() {
       return;
     }
 
-    const productData = {
-      name,
-      description,
-      category,
-      price: Number(price),
-      stock: Number(stock),
-      unit,
-      isAvailable,
-      images,
-    };
+    const formData = new FormData();
+
+    formData.append("name", name);
+    formData.append("description", description);
+    formData.append("category", category);
+    formData.append("price", price);
+    formData.append("stock", stock);
+    formData.append("unit", unit);
+    formData.append("isAvailable", isAvailable.toString());
+
+    // 🔥 Append images for Cloudinary
+    images.forEach((img, index) => {
+  const filename = img.split("/").pop();
+  const match = /\.(\w+)$/.exec(filename ?? "");
+  const type = match ? `image/${match[1]}` : `image`;
+
+  formData.append("images", {
+    uri: img,
+    name: filename || `photo_${index}.jpg`,
+    type,
+  });
+});
 
     const response = await fetch(
-      "http://192.168.25.67:5000/api/seller/products/add",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(productData),
-      }
-    );
+  "http://192.168.29.97:5000/api/seller/products/add",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  }
+);
 
     const data = await response.json();
 
@@ -103,8 +114,8 @@ export default function AddProductScreen() {
       Alert.alert("Error", data.message || "Something went wrong");
     }
   } catch (error) {
-    const err =console.log(error);
-    Alert.alert("Error", "Network error ");
+    console.log(error);
+    Alert.alert("Error", "Network error");
   }
 };
   return (
