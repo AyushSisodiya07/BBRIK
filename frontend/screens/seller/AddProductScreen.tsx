@@ -9,15 +9,14 @@ import {
   Alert,
   Image,
   ScrollView,
-  FlatList,
   Switch,
+  Platform,
+  PermissionsAndroid,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import {
-  launchImageLibrary,
-  launchCamera,
-} from "react-native-image-picker";
+import { launchImageLibrary, launchCamera } from "react-native-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import DraggableFlatList, { RenderItemParams } from "react-native-draggable-flatlist";
 
 export default function AddProductScreen() {
   const [name, setName] = useState("");
@@ -29,7 +28,7 @@ export default function AddProductScreen() {
   const [isAvailable, setIsAvailable] = useState(true);
   const [images, setImages] = useState<string[]>([]);
 
-  // ================= IMAGE PICK =================
+  // ========== Image Picker ==========
   const pickImages = () => {
     launchImageLibrary(
       { mediaType: "photo", selectionLimit: 5 },
@@ -38,13 +37,40 @@ export default function AddProductScreen() {
           const uris = res.assets
             .map((a) => a.uri)
             .filter(Boolean) as string[];
-          setImages((prev) => [...prev, ...uris]);
+          setImages((prev) => [...prev, ...uris]); // maintains order
         }
       }
     );
   };
 
-  const openCamera = () => {
+  const requestCameraPermission = async () => {
+    if (Platform.OS === "android") {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: "Camera Permission",
+            message: "App needs camera permission to take photos",
+            buttonNeutral: "Ask Me Later",
+            buttonNegative: "Cancel",
+            buttonPositive: "OK",
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const openCamera = async () => {
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) {
+      Alert.alert("Permission denied", "Camera permission is required");
+      return;
+    }
     launchCamera({ mediaType: "photo" }, (res) => {
       if (res.assets?.length) {
         const uri = res.assets[0].uri;
@@ -57,71 +83,68 @@ export default function AddProductScreen() {
     setImages((prev) => prev.filter((i) => i !== uri));
   };
 
- const submitForm = async () => {
-  if (!name || !price || !stock || !unit || !description) {
-    Alert.alert("Error", "Please fill all required fields");
-    return;
-  }
-
-  try {
-    const token = await AsyncStorage.getItem("token");
-
-    if (!token) {
-      Alert.alert("Error", "You are not logged in");
+  const submitForm = async () => {
+    if (!name || !price || !stock || !unit || !description) {
+      Alert.alert("Error", "Please fill all required fields");
       return;
     }
 
-    const formData = new FormData();
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Error", "You are not logged in");
+        return;
+      }
 
-    formData.append("name", name);
-    formData.append("description", description);
-    formData.append("category", category);
-    formData.append("price", price);
-    formData.append("stock", stock);
-    formData.append("unit", unit);
-    formData.append("isAvailable", isAvailable.toString());
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("description", description);
+      formData.append("category", category);
+      formData.append("price", price);
+      formData.append("stock", stock);
+      formData.append("unit", unit);
+      formData.append("isAvailable", isAvailable.toString());
 
-    // 🔥 Append images for Cloudinary
-    images.forEach((img, index) => {
-  const filename = img.split("/").pop();
-  const match = /\.(\w+)$/.exec(filename ?? "");
-  const type = match ? `image/${match[1]}` : `image`;
+      images.forEach((img, index) => {
+        const filename = img.split("/").pop();
+        const match = /\.(\w+)$/.exec(filename ?? "");
+        const type = match ? `image/${match[1]}` : `image`;
+        formData.append("images", {
+          uri: img,
+          name: filename || `photo_${index}.jpg`,
+          type,
+        } as any);
+      });
 
-  formData.append("images", {
-    uri: img,
-    name: filename || `photo_${index}.jpg`,
-    type,
-  });
-});
+      const response = await fetch(
+        "http://192.168.29.97:5000/api/seller/products/add",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        }
+      );
 
-    const response = await fetch(
-  "http://192.168.29.97:5000/api/seller/products/add",
-  {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  }
-);
-
-    const data = await response.json();
-
-    if (response.ok) {
-      Alert.alert("Success", "Product added successfully");
-      console.log(data);
-    } else {
-      Alert.alert("Error", data.message || "Something went wrong");
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert("Success", "Product added successfully");
+        console.log(data);
+      } else {
+        Alert.alert("Error", data.message || "Something went wrong");
+      }
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Network error");
     }
-  } catch (error) {
-    console.log(error);
-    Alert.alert("Error", "Network error");
-  }
-};
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Add Product</Text>
+        {/* TITLE WITH YELLOW BACKGROUND */}
+        <View style={styles.titleBox}>
+          <Text style={styles.title}>Add Product</Text>
+        </View>
 
         {/* IMAGE SECTION */}
         <TouchableOpacity style={styles.imageBox} onPress={pickImages}>
@@ -132,25 +155,30 @@ export default function AddProductScreen() {
           <Text style={styles.cameraText}>Open Camera</Text>
         </TouchableOpacity>
 
-        <FlatList
+        {/* DRAGGABLE IMAGE LIST */}
+        <DraggableFlatList
           horizontal
           data={images}
           keyExtractor={(item, index) => item + index}
-          style={{ marginBottom: 18 }}
-          renderItem={({ item }) => (
-            <View style={styles.previewWrap}>
+          onDragEnd={({ data }) => setImages(data)}
+          renderItem={({ item, index, drag, isActive }: RenderItemParams<string>) => (
+            <TouchableOpacity
+              style={[styles.previewWrap, isActive && { opacity: 0.8 }]}
+              onLongPress={drag} // press & hold to drag
+            >
               <Image source={{ uri: item }} style={styles.previewImage} />
+              <Text style={styles.imageOrder}>{index + 1}</Text>
               <TouchableOpacity
                 style={styles.removeBtn}
                 onPress={() => removeImage(item)}
               >
                 <Text style={{ color: "#fff", fontSize: 12 }}>✕</Text>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           )}
         />
 
-        {/* PRODUCT NAME */}
+        {/* INPUTS */}
         <Text style={styles.label}>Product Name *</Text>
         <TextInput
           placeholder="Enter product name"
@@ -160,7 +188,6 @@ export default function AddProductScreen() {
           onChangeText={setName}
         />
 
-        {/* PRODUCT CATEGORY */}
         <Text style={styles.label}>Product Category *</Text>
         <View style={styles.pickerBox}>
           <Picker
@@ -178,7 +205,6 @@ export default function AddProductScreen() {
           </Picker>
         </View>
 
-        {/* PRICE */}
         <Text style={styles.label}>Price per Product *</Text>
         <TextInput
           placeholder="Enter price"
@@ -189,10 +215,7 @@ export default function AddProductScreen() {
           onChangeText={setPrice}
         />
 
-        {/* STOCK */}
-        <Text style={styles.label}>
-          How many products do you have? *
-        </Text>
+        <Text style={styles.label}>Total Stock *</Text>
         <TextInput
           placeholder="Enter total number of products"
           placeholderTextColor="#9CA3AF"
@@ -202,10 +225,7 @@ export default function AddProductScreen() {
           onChangeText={setStock}
         />
 
-        {/* UNIT */}
-        <Text style={styles.label}>
-          What is quantity of 1 product? *
-        </Text>
+        <Text style={styles.label}>Quantity per Unit *</Text>
         <TextInput
           placeholder="Example: 1 bag = 50kg, 1 piece, 1 ton"
           placeholderTextColor="#9CA3AF"
@@ -214,7 +234,6 @@ export default function AddProductScreen() {
           onChangeText={setUnit}
         />
 
-        {/* DESCRIPTION */}
         <Text style={styles.label}>Product Description *</Text>
         <TextInput
           placeholder="Write product details here"
@@ -225,13 +244,11 @@ export default function AddProductScreen() {
           multiline
         />
 
-        {/* AVAILABLE SWITCH */}
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>Available for sale</Text>
           <Switch value={isAvailable} onValueChange={setIsAvailable} />
         </View>
 
-        {/* SUBMIT BUTTON */}
         <TouchableOpacity style={styles.submitBtn} onPress={submitForm}>
           <Text style={styles.submitText}>Add Product</Text>
         </TouchableOpacity>
@@ -243,63 +260,58 @@ export default function AddProductScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-    padding: 20,
+  container: { flex: 1, backgroundColor: "#F3F4F6", padding: 20 },
+  titleBox: {
+    backgroundColor: "#FBBF24",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 20,
   },
-
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    marginBottom: 24,
-    color: "#111827",
-  },
-
-  label: {
-    fontWeight: "700",
-    marginBottom: 6,
-    color: "#374151",
-    marginLeft: 4,
-  },
-
+  title: { fontSize: 28, fontWeight: "bold", color: "#111827" },
+  label: { fontWeight: "700", marginBottom: 6, color: "#374151", marginLeft: 4 },
   imageBox: {
-    height: 140,
-    backgroundColor: "#FFF8E1",
-    borderRadius: 20,
+    height: 100,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#FCD34D",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 4,
   },
-
-  imageText: {
-    fontWeight: "800",
-    color: "#B45309",
-  },
-
+  imageText: { fontWeight: "700", color: "#B45309", fontSize: 14 },
   cameraBtn: {
     backgroundColor: "#111827",
     padding: 14,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 8,
+    elevation: 6,
   },
-
-  cameraText: {
-    color: "#fff",
-    fontWeight: "800",
+  cameraText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  previewWrap: { marginRight: 12, position: "relative" },
+  previewImage: { width: 80, height: 80, borderRadius: 12, borderWidth: 2, borderColor: "#FBBF24" },
+  imageOrder: {
+    position: "absolute",
+    bottom: -6,
+    left: 6,
+    backgroundColor: "#FBBF24",
+    color: "#111827",
+    fontWeight: "bold",
+    paddingHorizontal: 4,
+    borderRadius: 6,
+    fontSize: 12,
   },
-
-  previewWrap: { marginRight: 12 },
-
-  previewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 14,
-  },
-
   removeBtn: {
     position: "absolute",
     right: -6,
@@ -311,60 +323,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   input: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    marginBottom: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
     borderWidth: 1.2,
     borderColor: "#E5E7EB",
-    fontSize: 15,
-    color: "#111827",
   },
-
-  textArea: {
-    height: 120,
-    textAlignVertical: "top",
-  },
-
+  textArea: { height: 120, textAlignVertical: "top" },
   pickerBox: {
     backgroundColor: "#fff",
     borderRadius: 16,
     borderWidth: 1.2,
     borderColor: "#E5E7EB",
-    marginBottom: 14,
+    marginBottom: 16,
   },
-
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    padding: 18,
+    padding: 16,
     borderRadius: 16,
     borderWidth: 1.2,
     borderColor: "#E5E7EB",
-    marginBottom: 18,
+    marginBottom: 16,
   },
-
-  switchLabel: {
-    fontWeight: "800",
-    color: "#111827",
-  },
-
+  switchLabel: { fontWeight: "700", color: "#111827" },
   submitBtn: {
-    backgroundColor: "#FACC15",
-    padding: 18,
+    backgroundColor: "#FBBF24",
+    paddingVertical: 16,
     borderRadius: 22,
     alignItems: "center",
-    elevation: 5,
+    marginTop: 8,
   },
-
-  submitText: {
-    color: "#111827",
-    fontWeight: "900",
-    fontSize: 16,
-  },
+  submitText: { color: "#111827", fontWeight: "bold", fontSize: 16 },
 });

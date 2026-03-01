@@ -78,20 +78,16 @@ export default function AdminHomeScreen() {
   /* ---------- Fetch Users ---------- */
   const fetchUsers = async () => {
     try {
-<<<<<<< HEAD
-      const res = await fetch("http://10.81.229.54:5000/api/admin/users");
-=======
       const token = await AsyncStorage.getItem("token");
 
       if (!token) {
         Alert.alert("Error", "No token found");
         return;
       }
-      const res = await fetch("http://192.168.25.67:5000/api/admin/users" ,
+      const res = await fetch("http://192.168.29.97:5000/api/admin/users" ,
         { method: "GET", headers: { "Content-Type": "application/json" ,
           Authorization: `Bearer ${token}`
         } });
->>>>>>> 19f2665baf5fab9d8b4e828cfecdbd600e266626
       const data = await res.json();
       if (res.ok) setUsers(data.users);
     } catch (err) {
